@@ -1,0 +1,10 @@
+[package]
+name = "tamagotchi-store-io"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+gstd.workspace = true
+gmeta.workspace = true
+sharded-fungible-token-io.workspace = true

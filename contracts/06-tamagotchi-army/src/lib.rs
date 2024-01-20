@@ -23,8 +23,12 @@ async fn main() {
         TAMAGOTCHI_FACTORY.get_or_insert(Default::default())
     };
     match action {
-        TamagotchiFactoryAction::CreateTamagotchi { name } => {
-            factory.create_tamagotchi(&exec::program_id(), name).await;
+        TamagotchiFactoryAction::CreateTamagotchi { 
+            name,
+            owner,
+            store_contract 
+        } => {
+            factory.create_tamagotchi(&owner, name, store_contract).await;
         },
         TamagotchiFactoryAction::TamagotchiName(tamagotchi_id) => {
             factory.get_tamagotchi_name(tamagotchi_id).await;  

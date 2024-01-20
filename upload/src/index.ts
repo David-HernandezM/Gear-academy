@@ -50,6 +50,7 @@ const main = async () => {
     }
 
     if (tx.type === 'upload_program') {
+      console.log("ts program: ", tx.program);
       const program = programs[tx.program];
       console.log(`[*] Upload ${program.name}`);
       const { programId, meta } = await uploadProgram(
@@ -60,7 +61,7 @@ const main = async () => {
         getPayload(accounts, programs, codes, program.payload),
         program.value,
       );
-      console.log();
+      console.log("paso primera parte!!!");
       program.address = programId;
       program.meta = meta;
       continue;

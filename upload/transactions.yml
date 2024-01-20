@@ -1,4 +1,4 @@
-wsAddress: wss://testnet.vara.rs
+wsAddress: wss://testnet.vara.network
 
 accounts:
   alice: //Alice

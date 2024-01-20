@@ -30,12 +30,13 @@ pub struct TamagotchiFactory {
 }
 
 impl TamagotchiFactory {
-    pub async fn create_tamagotchi(&mut self, tamagotchi_owner: &ActorId, tamagotchi_name: String) {
+    pub async fn create_tamagotchi(&mut self, tamagotchi_owner: &ActorId, tamagotchi_name: String, store_contract_address: ActorId) {
         let (address, _) = ProgramGenerator::create_program_with_gas_for_reply(
             self.tamagotchi_code_id,
             TmgInit {
                 owner: *tamagotchi_owner,
-                name: tamagotchi_name
+                name: tamagotchi_name,
+                store_contract_address
             },
             GAS_FOR_CREATION,
             0,
@@ -226,7 +227,7 @@ impl TamagotchiFactory {
         let tamagotchi_address = self.get_tamagotchi_address(tamagotchi_id);
         let tamagotchi_ans = Self::send_message(
             &tamagotchi_address,
-            TmgAction::BuyAttribute { store_id, attribute_id }
+            TmgAction::BuyAttribute { attribute_id }
         ).await;
         
         if tamagotchi_ans == TmgEvent::ErrorDuringPurchase {
@@ -310,7 +311,9 @@ impl TamagotchiFactory {
 #[scale_info(crate = gstd::scale_info)]
 pub enum TamagotchiFactoryAction {
     CreateTamagotchi {
-        name: String
+        name: String,
+        owner: ActorId,
+        store_contract: ActorId
     },
     // Agregar las demas acciones para los tamagotchis
     TamagotchiName(TamagotchiId),

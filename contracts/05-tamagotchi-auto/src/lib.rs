@@ -13,7 +13,7 @@ static mut GAS_RESERVATIONS_HANDLERS: Option<GasReservationHandlers> = None;
 #[no_mangle]
 extern fn init() {
     // TODO: 0️⃣ Copy the `init` function from the previous lesson and push changes to the master branch
-    let TmgInit {owner, name} = msg::load().expect("Error in init message");
+    let TmgInit {owner, name, store_contract_address} = msg::load().expect("Error in init message");
     let block_height = blocks_height();
     let new_tamagotchi: Tamagotchi = Tamagotchi {
         name,
@@ -26,6 +26,7 @@ extern fn init() {
         rested: 5000,
         rested_block: block_height,
         approved_account: None,
+        store_contract: store_contract_address,
         ..Tamagotchi::default()
     };
     unsafe {
@@ -118,13 +119,20 @@ async fn main() {
             tamagotchi.approve_tokens(account, amount).await;
         },
         TmgAction::BuyAttribute {
-            store_id,
             attribute_id
         } => {
             if !tamagotchi.is_owner_or_approved(&caller) {
                 return;
             }
-            tamagotchi.buy_attribute(store_id, attribute_id).await;                                                   
+            tamagotchi.buy_attribute(attribute_id).await;                                                   
+        },  
+        TmgAction::UpgradeAttribute {
+            attribute_id
+        } => {
+            if !tamagotchi.is_owner_or_approved(&caller) {
+                return;
+            }
+            tamagotchi.upgrade_attribute(attribute_id).await;                                                   
         },  
         // TODO; 6️⃣ Add handling new actions        
         TmgAction::CheckState => {
@@ -197,6 +205,18 @@ async fn main() {
             
             msg::reply(TmgEvent::GasReserved, 0)
                 .expect("Error in sending a reply");
+        },
+        TmgAction::SetStoreAddress(store_contract) => {
+            if tamagotchi.owner != msg::source() {
+                return;
+            }  
+            tamagotchi.store_contract = store_contract;
+            msg::reply(TmgEvent::SavedStoreContract, 0)
+                .expect("Error in sending reply");
+        },
+        TmgAction::TmgInfo => {
+            msg::reply(TmgEvent::Owner(tamagotchi.owner), 0) 
+                .expect("Error in reply");
         }
     }
 }

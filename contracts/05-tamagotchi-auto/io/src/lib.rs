@@ -4,7 +4,7 @@ use gmeta::{Metadata, In, Out, InOut};
 use gstd::{prelude::*, msg, ActorId, exec, ReservationId};
 
 use sharded_fungible_token_io::{ FTokenAction, FTokenEvent, LogicAction };
-use store_io::{ StoreAction, StoreEvent };
+use tamagotchi_store_io::{ StoreAction, StoreEvent };
 
 pub type TransactionId = u64;
 pub type AttributeId = u32;
@@ -42,6 +42,7 @@ pub struct Tamagotchi {
     pub approve_transaction: Option<(TransactionId, ActorId, u128)>,
     // TODO: 1️⃣ Add new fields
     pub reservations: Vec<ReservationId>,
+    pub store_contract: ActorId
 }
 
 impl Tamagotchi {   
@@ -103,9 +104,9 @@ impl Tamagotchi {
         false
     }
     
-    pub async fn buy_attribute(&mut self, store_id: ActorId, attribute_id: AttributeId) {
-        let store_response = msg::send_for_reply_as::<_, StoreEvent>(
-            store_id,
+    pub async fn buy_attribute(&mut self, attribute_id: AttributeId) {
+        msg::send_for_reply_as::<_, StoreEvent>(
+            self.store_contract.clone(),
             StoreAction::BuyAttribute {
                 attribute_id
             },
@@ -116,6 +117,30 @@ impl Tamagotchi {
         .await
         .expect("Error in decoding 'FTokenEvent'");
         
+        msg::reply(TmgEvent::AttributeBought(attribute_id), 0)
+            .expect("Error in sending reply");
+    }
+    
+    pub async fn upgrade_attribute(&mut self, attribute_id: AttributeId) {
+        let store_response = msg::send_for_reply_as::<_, StoreEvent>(
+            self.store_contract.clone(),
+            StoreAction::UpgradeAttribute {
+                attribute_id
+            },
+            0,
+            1_000_000_000,
+        )
+        .expect("Error in sending a message `FTokenAction::Message`")
+        .await
+        .expect("Error in decoding 'FTokenEvent'");
+        
+        
+        if let StoreEvent::AttributeCannotBeImproved = store_response {
+            msg::reply(TmgEvent::AttributeCannotBeImproved, 0) 
+                .expect("Error sending reply");
+            return;
+        }
+        
         if let StoreEvent::CompletePrevTx { attribute_id} = store_response {
             msg::reply(TmgEvent::CompletePrevPurchase(attribute_id), 0) 
                 .expect("Error sending reply");
@@ -123,6 +148,41 @@ impl Tamagotchi {
         }
         
         let StoreEvent::AttributeSold { success } = store_response else {
+            msg::reply(TmgEvent::ErrorDuringPurchase, 0)
+                .expect("Error sending reply");
+            return;
+        };
+        
+        if success {
+            msg::reply(TmgEvent::ErrorDuringPurchase, 0)
+                .expect("Error sending reply");
+            return;
+        }
+        
+        msg::reply(TmgEvent::EnhancedAttribute(attribute_id), 0)
+            .expect("Error in sending reply");
+    }
+    
+    pub async fn buy_attribute2(&mut self, attribute_id: AttributeId) {
+        let store_response = msg::send_for_reply_as::<_, StoreEvent>(
+            self.store_contract.clone(),
+            StoreAction::BuyAttribute2 {
+                attribute_id
+            },
+            0,
+            1_000_000_000,
+        )
+        .expect("Error in sending a message `FTokenAction::Message`")
+        .await
+        .expect("Error in decoding 'FTokenEvent'");
+        
+        if let StoreEvent::CompletePrevTx { attribute_id } = store_response {
+            msg::reply(TmgEvent::CompletePrevPurchase(attribute_id), 0) 
+                .expect("Error sending reply");
+            return;
+        }
+        
+        let StoreEvent::AttributeUpgrade { success } = store_response else {
             msg::reply(TmgEvent::ErrorDuringPurchase, 0)
                 .expect("Error sending reply");
             return;
@@ -261,7 +321,9 @@ pub enum TmgAction {
         amount: u128,
     },
     BuyAttribute {
-        store_id: ActorId,
+        attribute_id: AttributeId,
+    },  
+    UpgradeAttribute {
         attribute_id: AttributeId,
     },  
     // TODO: 2️⃣ Add new actions
@@ -270,6 +332,8 @@ pub enum TmgAction {
         reservation_amount: u64,
         duration: u32,
     },
+    SetStoreAddress(ActorId),
+    TmgInfo
 }
 
 #[derive(Encode, Decode, TypeInfo, Eq, PartialEq)]
@@ -289,8 +353,10 @@ pub enum TmgEvent {
     TokensApproved { account: ActorId, amount: u128 },
     ApprovalError,
     AttributeBought(AttributeId),
+    EnhancedAttribute(AttributeId),
     CompletePrevPurchase(AttributeId),
     ErrorDuringPurchase,
+    AttributeCannotBeImproved,
     // TODO: 3️⃣ Add new events
     FeedMe,
     PlayWithMe,
@@ -298,6 +364,8 @@ pub enum TmgEvent {
     AllGood, // extra field to return if the user check state
     MakeReservation,
     GasReserved,
+    SavedStoreContract,
+    Owner(ActorId)
 }
 
 #[derive(Encode, Decode, TypeInfo)]
@@ -305,14 +373,15 @@ pub enum TmgEvent {
 #[scale_info(crate = gstd::scale_info)]
 pub struct TmgInit {
     pub owner: ActorId,
-    pub name: String
+    pub name: String,
+    pub store_contract_address: ActorId
 }
 
 pub struct ProgramMetadata;
 
 // TODO: 0️⃣ Copy `Metadata` from the first lesson and push changes to the master branch
 impl Metadata for ProgramMetadata {
-    type Init = In<String>;
+    type Init = In<TmgInit>;
     type Reply = ();
     type Others = InOut<TmgAction, TmgEvent>;
     type Signal = ();

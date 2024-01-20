@@ -14,7 +14,7 @@ const FT_MAIN_WASM: &str = "sharded_fungible_token";
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let api = GearApi::init_with(
-        gclient::WSAddress::new("wss://testnet.vara.rs", Some(443)),
+        gclient::WSAddress::new("wss://testnet.vara.network", Some(443)),
         "//Alice",
     )
     .await?;

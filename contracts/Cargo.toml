@@ -19,7 +19,9 @@ members = [
     "06-tamagotchi-army",
     "escrow",
     "escrow/state",
-    "escrow-factory"
+    "escrow-factory",
+    "tamagotchi-battle",
+    "tamagotchi-store"
 ]
 
 [workspace.dependencies]
@@ -40,6 +42,8 @@ tamagotchi-auto-io.path = "05-tamagotchi-auto/io"
 tamagotchi-army-io.path = "06-tamagotchi-army/io"
 escrow-io.path = "escrow/io"
 escrow-factory-io.path = "escrow-factory/io"
+tamagotchi-battle-io.path = "tamagotchi-battle/io"
+tamagotchi-store-io.path = "tamagotchi-store/io"
 
 
 tokio = "1"
